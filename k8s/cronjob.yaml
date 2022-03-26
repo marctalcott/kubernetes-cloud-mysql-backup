@@ -1,0 +1,52 @@
+
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-database-backup
+spec:
+  schedule: "0 01 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: my-database-backup
+              image: ghcr.io/marctalcott/kubernetes-cloud-mysql-backup:master
+              imagePullPolicy: Always
+              env:
+                - name: GCP_GCLOUD_AUTH
+                  valueFrom:
+                    secretKeyRef:
+                      name: my-database-backup
+                      key: gcp_gcloud_auth
+                - name: BACKUP_PROVIDER
+                  value: "gcp"
+                - name: GCP_BUCKET_NAME
+                  value: "mysql-backups-xyz321" # "<Your GCS Bucket Name>"
+                - name: GCP_BUCKET_BACKUP_PATH
+                  value: "/sqlbak-linode" # "<Your GCS Bucket Backup Path>"
+                - name: TARGET_DATABASE_HOST
+                  value: "10.128.242.122" # "<Your Target Database Host>"
+                - name: TARGET_DATABASE_PORT
+                  value: "3306" # "<Your Target Database Port>"
+                - name: TARGET_ALL_DATABASES
+                  value: "true"
+                - name: TARGET_DATABASE_USER
+                  value: "k8s-backup-service" # "<Your Target Database Username>"
+                - name: TARGET_DATABASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: my-database-backup
+                      key: database_password
+                - name: BACKUP_TIMESTAMP
+                  value: "_%Y_%m_%d"
+                - name: SLACK_ENABLED
+                  value: "true"
+                - name: SLACK_CHANNEL
+                  value: "#automations-sql-backups"
+                - name: SLACK_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: my-database-backup
+                      key: slack_webhook_url
+          restartPolicy: Never
